@@ -53,6 +53,7 @@ App.WizardStep7Controller = Em.Controller.extend(App.ServerValidatorMixin, {
   /**
    * used in services_config.js view to mark a config with security icon
    */
+/*  secureConfigs: require('data/HDP2/secure_mapping'),*/
   secureConfigs: require('data/HDP2/secure_mapping'),
 
   /**
@@ -60,6 +61,7 @@ App.WizardStep7Controller = Em.Controller.extend(App.ServerValidatorMixin, {
    * use only for add service wizard when security is enabled;
    */
   secureServices: function () {
+/*    return $.extend(true, [], require('data/HDP2/secure_configs'));*/
     return $.extend(true, [], require('data/HDP2/secure_configs'));
   }.property(),
 

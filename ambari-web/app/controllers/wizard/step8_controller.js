@@ -1814,6 +1814,7 @@ App.WizardStep8Controller = Em.Controller.extend(App.AddSecurityConfigs, App.wiz
     var miscConfigs = this.get('configs').filterProperty('serviceName', 'MISC'),
       createNotification = miscConfigs.findProperty('name', 'create_notification').value;
     if (createNotification !== 'yes') return;
+/*      var predefinedNotificationConfigNames = require('data/HDP2/site_properties').configProperties.filterProperty('filename', 'alert_notification').mapProperty('name'),*/
       var predefinedNotificationConfigNames = require('data/HDP2/site_properties').configProperties.filterProperty('filename', 'alert_notification').mapProperty('name'),
       configsForNotification = this.get('configs').filterProperty('filename', 'alert_notification');
     var properties = {},
