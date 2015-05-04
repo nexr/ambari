@@ -153,7 +153,8 @@ def oozie_server_specific(
 # the version of hadoop-auth jar files in bigtop 0.8 oozie is wrong
 def correct_hadoop_auth_jar_files():
 
-  hadoop_auth_jar_file = "/usr/lib/hadoop/hadoop-auth-2.4.1.jar"
+#  hadoop_auth_jar_file = "/usr/lib/hadoop/hadoop-auth-2.4.1.jar"
+  hadoop_auth_jar_file = "/usr/lib/hadoop/hadoop-auth-2.6.0.jar"
 
   if not os.path.exists(hadoop_auth_jar_file):
     raise Fail("Could not find %s" % (hadoop_auth_jar_file))

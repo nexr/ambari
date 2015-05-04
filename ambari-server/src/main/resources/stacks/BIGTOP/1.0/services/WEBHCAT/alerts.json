@@ -10,7 +10,7 @@
         "enabled": true,
         "source": {
           "type": "SCRIPT",
-          "path": "BIGTOP/0.8/services/WEBHCAT/package/files/alert_webhcat_server.py"
+          "path": "BIGTOP/1.0/services/WEBHCAT/package/files/alert_webhcat_server.py"
         }
       }
     ]

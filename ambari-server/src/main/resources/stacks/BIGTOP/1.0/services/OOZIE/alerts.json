@@ -34,7 +34,7 @@
         "scope": "ANY",
         "source": {
           "type": "SCRIPT",
-          "path": "BIGTOP/0.8/services/OOZIE/package/files/alert_check_oozie_server.py"
+          "path": "BIGTOP/1.0/services/OOZIE/package/files/alert_check_oozie_server.py"
         }
       }
     ]

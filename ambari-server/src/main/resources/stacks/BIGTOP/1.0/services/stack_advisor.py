@@ -306,13 +306,14 @@ class BaseBIGTOP08StackAdvisor(DefaultStackAdvisor):
       }
 
 class BIGTOP08StackAdvisor(BaseBIGTOP08StackAdvisor):
-
+### hugh update 20150429 ###
   def getServiceConfigurationRecommenderDict(self):
     parentRecommendConfDict = super(BIGTOP08StackAdvisor, self).getServiceConfigurationRecommenderDict()
     childRecommendConfDict = {
       "OOZIE": self.recommendOozieConfigurations,
       "HIVE": self.recommendHiveConfigurations,
-      "TEZ": self.recommendTezConfigurations
+      "TEZ": self.recommendTezConfigurations,
+      "AMBARI_METRICS": self.recommendAmsConfigurations
     }
     parentRecommendConfDict.update(childRecommendConfDict)
     return parentRecommendConfDict
@@ -440,3 +441,253 @@ def isSecurePort(port):
     return port < 1024
   else:
     return False
+
+### update by hugh 20150429 ###
+
+
+## HDP 2.0.6 
+ def recommendAmsConfigurations(self, configurations, clusterData, services, hosts):
+    putAmsEnvProperty = self.putProperty(configurations, "ams-env")
+    putAmsEnvProperty = self.putProperty(configurations, "ams-env")
+    putAmsHbaseSiteProperty = self.putProperty(configurations, "ams-hbase-site")
+    putTimelineServiceProperty = self.putProperty(configurations, "ams-site")
+    putHbaseEnvProperty = self.putProperty(configurations, "ams-hbase-env")
+
+    amsCollectorHosts = self.getComponentHostNames(services, "AMBARI_METRICS", "METRICS_COLLECTOR")
+    putHbaseEnvProperty("hbase_regionserver_heapsize", "1024m")
+    # blockCache = 0.3, memstore = 0.35, phoenix-server = 0.15, phoenix-client = 0.25
+    putAmsHbaseSiteProperty("hfile.block.cache.size", 0.3)
+    putAmsHbaseSiteProperty("hbase.regionserver.global.memstore.upperLimit", 0.35)
+    putAmsHbaseSiteProperty("hbase.regionserver.global.memstore.lowerLimit", 0.3)
+    putTimelineServiceProperty("timeline.metrics.host.aggregator.ttl", 86400)
+
+    # TODO recommend configuration for multiple AMBARI_METRICS collectors
+    if len(amsCollectorHosts) > 1:
+      pass
+    else:
+      totalHostsCount = len(hosts["items"])
+      # blockCache = 0.3, memstore = 0.3, phoenix-server = 0.2, phoenix-client = 0.3
+      if totalHostsCount >= 400:
+        putHbaseEnvProperty("hbase_master_heapsize", "12288m")
+        putAmsEnvProperty("metrics_collector_heapsize", "8192m")
+        putAmsHbaseSiteProperty("hbase.regionserver.handler.count", 60)
+        putAmsHbaseSiteProperty("hbase.regionserver.hlog.blocksize", 134217728)
+        putAmsHbaseSiteProperty("hbase.regionserver.maxlogs", 64)
+        putAmsHbaseSiteProperty("hbase.hregion.memstore.flush.size", 268435456)
+        putAmsHbaseSiteProperty("hbase.regionserver.global.memstore.upperLimit", 0.3)
+        putAmsHbaseSiteProperty("hbase.regionserver.global.memstore.lowerLimit", 0.25)
+        putAmsHbaseSiteProperty("phoenix.query.maxGlobalMemoryPercentage", 20)
+        putTimelineServiceProperty("phoenix.query.maxGlobalMemoryPercentage", 30)
+        putHbaseEnvProperty("hbase_master_xmn_size", "512m")
+      elif totalHostsCount >= 100:
+        putHbaseEnvProperty("hbase_master_heapsize", "6144m")
+        putAmsEnvProperty("metrics_collector_heapsize", "4096m")
+        putAmsHbaseSiteProperty("hbase.regionserver.handler.count", 60)
+        putAmsHbaseSiteProperty("hbase.regionserver.hlog.blocksize", 134217728)
+        putAmsHbaseSiteProperty("hbase.regionserver.maxlogs", 64)
+        putAmsHbaseSiteProperty("hbase.hregion.memstore.flush.size", 268435456)
+        putHbaseEnvProperty("hbase_master_xmn_size", "512m")
+      elif totalHostsCount >= 50:
+        putHbaseEnvProperty("hbase_master_heapsize", "2048m")
+        putAmsEnvProperty("metrics_collector_heapsize", "2048m")
+        putHbaseEnvProperty("hbase_master_xmn_size", "256m")
+      else:
+        putHbaseEnvProperty("hbase_master_heapsize", "1024m")
+        putAmsEnvProperty("metrics_collector_heapsize", "512m")
+        putHbaseEnvProperty("hbase_master_xmn_size", "128m")
+
+## HDP 2.0.6
+def getServiceConfigurationValidators(self):
+    return {
+      "HDFS": {"hadoop-env": self.validateHDFSConfigurationsEnv},
+      "MAPREDUCE2": {"mapred-site": self.validateMapReduce2Configurations},
+      "YARN": {"yarn-site": self.validateYARNConfigurations},
+      "HBASE": {"hbase-env": self.validateHbaseEnvConfigurations},
+      "AMBARI_METRICS": {"ams-hbase-site": self.validateAmsHbaseSiteConfigurations,
+              "ams-hbase-env": self.validateAmsHbaseEnvConfigurations,
+              "ams-site": self.validateAmsSiteConfigurations},
+    }
+
+
+
+## HDP 2.0.6
+ def validateAmsSiteConfigurations(self, properties, recommendedDefaults, configurations, services, hosts):
+     validationItems = []
+
+     op_mode = properties.get("timeline.metrics.service.operation.mode")
+     correct_op_mode_item = None
+     if op_mode not in ("embedded", "distributed"):
+       correct_op_mode_item = self.getErrorItem("Correct value should be set.")
+       pass
+
+     validationItems.extend([{"config-name":'timeline.metrics.service.operation.mode', "item": correct_op_mode_item }])
+     return self.toConfigurationValidationProblems(validationItems, "ams-site")
+
+
+## HDP 2.0.6
+def validateAmsHbaseSiteConfigurations(self, properties, recommendedDefaults, configurations, services, hosts):
+
+     amsCollectorHosts = self.getComponentHostNames(services, "AMBARI_METRICS", "METRICS_COLLECTOR")
+     ams_site = getSiteProperties(configurations, "ams-site")
+
+     recommendedDiskSpace = 10485760
+     # TODO validate configuration for multiple AMBARI_METRICS collectors
+     if len(amsCollectorHosts) > 1:
+       pass
+     else:
+       totalHostsCount = len(hosts["items"])
+       if totalHostsCount > 400:
+         recommendedDiskSpace  = 104857600  # * 1k == 100 Gb
+       elif totalHostsCount > 100:
+         recommendedDiskSpace  = 52428800  # * 1k == 50 Gb
+       elif totalHostsCount > 50:
+         recommendedDiskSpace  = 20971520  # * 1k == 20 Gb
+
+
+     validationItems = []
+     for collectorHostName in amsCollectorHosts:
+       for host in hosts["items"]:
+         if host["Hosts"]["host_name"] == collectorHostName:
+           validationItems.extend([ {"config-name": 'hbase.rootdir', "item": self.validatorEnoughDiskSpace(properties, 'hbase.rootdir', host["Hosts"], recommendedDiskSpace)}])
+           break
+
+     rootdir_item = None
+     op_mode = ams_site.get("timeline.metrics.service.operation.mode")
+     hbase_rootdir = properties.get("hbase.rootdir")
+     if op_mode == "distributed" and not hbase_rootdir.startswith("hdfs://"):
+       rootdir_item = self.getWarnItem("In distributed mode hbase.rootdir should point to HDFS. Collector will operate in embedded mode otherwise.")
+       pass
+
+     distributed_item = None
+     distributed = properties.get("hbase.cluster.distributed")
+     if hbase_rootdir.startswith("hdfs://") and not distributed.lower() == "true":
+       distributed_item = self.getErrorItem("Distributed property should be set to true if hbase.rootdir points to HDFS.")
+
+     validationItems.extend([{"config-name":'hbase.rootdir', "item": rootdir_item },
+                             {"config-name":'hbase.cluster.distributed', "item": distributed_item }])
+
+     return self.toConfigurationValidationProblems(validationItems, "ams-hbase-site")
+
+## HDP 2.0.6
+def validateAmsHbaseEnvConfigurations(self, properties, recommendedDefaults, configurations, services, hosts):
+     regionServerItem = self.validatorLessThenDefaultValue(properties, recommendedDefaults, "hbase_regionserver_heapsize")
+     masterItem = self.validatorLessThenDefaultValue(properties, recommendedDefaults, "hbase_master_heapsize")
+     ams_env = getSiteProperties(configurations, "ams-env")
+     logDirItem = self.validatorEqualsPropertyItem(properties, "hbase_log_dir",
+                                                   ams_env, "metrics_collector_log_dir")
+     masterHostItem = None
+
+     if masterItem is None:
+       hostComponents = {}
+       hostMasterComponents = {}
+
+       for service in services["services"]:
+         for component in service["components"]:
+           if component["StackServiceComponents"]["hostnames"] is not None:
+             for hostName in component["StackServiceComponents"]["hostnames"]:
+               if hostName not in hostComponents.keys():
+                 hostComponents[hostName] = []
+               hostComponents[hostName].append(component["StackServiceComponents"]["component_name"])
+               if self.isMasterComponent(component):
+                 if hostName not in hostMasterComponents.keys():
+                   hostMasterComponents[hostName] = []
+                 hostMasterComponents[hostName].append(component["StackServiceComponents"]["component_name"])
+
+       amsCollectorHosts = self.getComponentHostNames(services, "AMBARI_METRICS", "METRICS_COLLECTOR")
+       for collectorHostName in amsCollectorHosts:
+         for host in hosts["items"]:
+           if host["Hosts"]["host_name"] == collectorHostName:
+             # AMS Collector co-hosted with other master components in bigger clusters
+             if len(hosts['items']) > 31 and \
+               len(hostMasterComponents[collectorHostName]) > 2 and \
+               host["Hosts"]["total_mem"] < 32*1024*1024: # <32 Gb(total_mem in k)
+               masterHostMessage = "Host {0} is used by multiple master components ({1}). " \
+                                   "It is recommended to use a separate host for the " \
+                                   "Ambari Metrics Collector component and ensure " \
+                                   "the host has sufficient memory available."
+
+               masterHostItem = self.getWarnItem(
+                 masterHostMessage.format(
+                   collectorHostName, str(", ".join(hostMasterComponents[collectorHostName]))))
+
+             # No enough physical memory
+             # TODO Add AMBARI_METRICS Collector Xmx property to ams-env
+             requiredMemory = getMemorySizeRequired(hostComponents[collectorHostName], configurations)
+             if host["Hosts"]["total_mem"] * 1024 < requiredMemory:  # in bytes
+               message = "No enough total RAM on the host {0}, " \
+                         "at least {1} MB required for the components({2})" \
+                 .format(collectorHostName, requiredMemory/1048576,
+                         str(", ".join(hostComponents[collectorHostName])))  # MB
+               regionServerItem = self.getErrorItem(message)
+               masterItem = self.getErrorItem(message)
+               break
+
+     validationItems = [{"config-name": "hbase_regionserver_heapsize", "item": regionServerItem},
+                        {"config-name": "hbase_master_heapsize", "item": masterItem},
+                        {"config-name": "hbase_master_heapsize", "item": masterHostItem},
+                        {"config-name": "hbase_log_dir", "item": logDirItem}]
+     return self.toConfigurationValidationProblems(validationItems, "ams-hbase-env")
+
+
+## HDP 2.2
+# def getServiceConfigurationRecommenderDict(self):
+#    parentRecommendConfDict = super(HDP22StackAdvisor, self).getServiceConfigurationRecommenderDict()
+#    childRecommendConfDict = {
+#      "HDFS": self.recommendHDFSConfigurations,
+#      "HIVE": self.recommendHIVEConfigurations,
+#      "HBASE": self.recommendHBASEConfigurations,
+#      "MAPREDUCE2": self.recommendMapReduce2Configurations,
+#      "TEZ": self.recommendTezConfigurations,
+#      "AMBARI_METRICS": self.recommendAmsConfigurations,
+#      "YARN": self.recommendYARNConfigurations
+#    }
+#    parentRecommendConfDict.update(childRecommendConfDict)
+#    return parentRecommendConfDict
+
+
+## HDP 2.0.6
+ def getMastersWithMultipleInstances(self):
+    return ['ZOOKEEPER_SERVER', 'HBASE_MASTER']
+
+## HDP 2.2
+ def getMastersWithMultipleInstances(self):
+    result = getMastersWithMultipleInstances()
+    result.extend(['METRICS_COLLECTOR'])
+    return result
+
+## HDP 2.0.6
+ def getNotValuableComponents(self):
+    return ['JOURNALNODE', 'ZKFC', 'GANGLIA_MONITOR', 'APP_TIMELINE_SERVER']
+
+## HDP 2.2
+  def getNotValuableComponents(self):
+    result = getNotValuableComponents()
+    result.extend(['METRICS_MONITOR'])
+    return result
+
+## HDP 2.0.6
+def getNotPreferableOnServerComponents(self):
+    return ['STORM_UI_SERVER', 'DRPC_SERVER', 'STORM_REST_API', 'NIMBUS', 'GANGLIA_SERVER']
+
+## HDP 2.2
+  def getNotPreferableOnServerComponents(self):
+    result = getNotPreferableOnServerComponents()
+    result.extend(['METRICS_COLLECTOR'])
+    return result
+    
+## HDP 2.0.6    
+    def getCardinalitiesDict(self):
+    return {
+      'ZOOKEEPER_SERVER': {"min": 3},
+      'HBASE_MASTER': {"min": 1},
+      }
+
+
+  def getCardinalitiesDict(self):
+    result = getCardinalitiesDict()
+    result['METRICS_COLLECTOR'] = {"min": 1}
+    return result
+
+
+
+

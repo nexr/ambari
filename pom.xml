@@ -51,7 +51,8 @@
     <deb.section>universe/admin</deb.section>
     <deb.architecture>i386 amd64</deb.architecture>
     <deb.priority>extra</deb.priority>
-    <stack.distribution>HDP</stack.distribution>
+<!--    <stack.distribution>HDP</stack.distribution> -->
+    <stack.distribution>BIGTOP</stack.distribution> 
     <ambari.dir>${project.basedir}</ambari.dir>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <distMgmtSnapshotsId>apache.snapshots.https</distMgmtSnapshotsId>
@@ -353,6 +354,8 @@
             <exclude>ambari-metrics/*/target/**</exclude>
             <!-- ignore .settings and .project  -->
             <exclude>ambari-metrics/**/.*/**</exclude>
+            <exclude>contrib/views/**</exclude>
+            <exclude>contrib/views/**</exclude>
           </excludes>
         </configuration>
         <executions>

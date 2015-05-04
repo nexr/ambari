@@ -387,7 +387,7 @@
         "enabled": true,
         "source": {
           "type": "SCRIPT",
-          "path": "BIGTOP/0.8/services/HDFS/package/files/alert_checkpoint_time.py"
+          "path": "BIGTOP/1.0/services/HDFS/package/files/alert_checkpoint_time.py"
         }
       },
       {
@@ -400,7 +400,7 @@
         "ignore_host": true,
         "source": {
           "type": "SCRIPT",
-          "path": "BIGTOP/0.8/services/HDFS/package/files/alert_ha_namenode_health.py"
+          "path": "BIGTOP/1.0/services/HDFS/package/files/alert_ha_namenode_health.py"
         }
       }
     ],
